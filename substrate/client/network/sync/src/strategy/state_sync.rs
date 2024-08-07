@@ -133,20 +133,22 @@ where
 		}
 	}
 
+	fn insert_child_trie_roots(&mut self, key_value: (Vec<u8>, Vec<u8>)) {
+		self.state.entry(key_value.1).or_default().1.push(key_value.0);
+	}
+
 	fn store_state_verified(&mut self, values: KeyValueStates) {
 		for values in values.0 {
-			let key_values = if values.state_root.is_empty() {
+			let is_top = values.state_root.is_empty();
+
+			let key_values = if is_top {
 				// Read child trie roots.
 				values
 					.key_values
 					.into_iter()
 					.filter(|key_value| {
 						if well_known_keys::is_child_storage_key(key_value.0.as_slice()) {
-							self.state
-								.entry(key_value.1.clone())
-								.or_default()
-								.1
-								.push(key_value.0.clone());
+							self.insert_child_trie_roots(key_value.clone());
 							false
 						} else {
 							true
@@ -156,7 +158,9 @@ where
 			} else {
 				values.key_values
 			};
+
 			let entry = self.state.entry(values.state_root).or_default();
+
 			if entry.0.len() > 0 && entry.1.len() > 1 {
 				// Already imported child_trie with same root.
 				// Warning this will not work with parallel download.
@@ -201,8 +205,11 @@ where
 				}
 				complete = false;
 			}
+
 			let is_top = state.state_root.is_empty();
+
 			let entry = self.state.entry(state.state_root).or_default();
+
 			if entry.0.len() > 0 && entry.1.len() > 1 {
 				// Already imported child trie with same root.
 			} else {
