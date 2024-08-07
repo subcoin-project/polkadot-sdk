@@ -141,14 +141,10 @@ where
 		for values in values.0 {
 			let is_top = values.state_root.is_empty();
 
-			let (child_key_values, top_key_values): (Vec<_>, Vec<_>) = if is_top {
-				// Read child trie roots.
+			let (child_key_values, top_key_values): (Vec<_>, Vec<_>) =
 				values.key_values.into_iter().partition(|key_value| {
-					well_known_keys::is_child_storage_key(key_value.0.as_slice())
-				})
-			} else {
-				(vec![], values.key_values)
-			};
+					is_top && well_known_keys::is_child_storage_key(key_value.0.as_slice())
+				});
 
 			let entry = self.state.entry(values.state_root).or_default();
 
