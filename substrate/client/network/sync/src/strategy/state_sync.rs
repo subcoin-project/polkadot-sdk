@@ -91,8 +91,14 @@ pub enum ImportResult<B: BlockT> {
 
 #[derive(Default)]
 struct StateValues {
+	/// List of the top trie key values.
 	top: Vec<(Vec<u8>, Vec<u8>)>,
+	/// Size of top key values.
+	top_len: usize,
+	/// List of the child trie roots under the same trie root.
 	child_roots: Vec<Vec<u8>>,
+	/// Size of the child trie roots.
+	child_roots_len: usize,
 }
 
 /// State sync state machine. Accumulates partial state data until it
@@ -153,7 +159,7 @@ where
 
 		let state_values = self.state.entry(state_root).or_default();
 
-		if state_values.top.len() > 0 && state_values.child_roots.len() > 1 {
+		if state_values.top_len > 0 && state_values.child_roots_len > 1 {
 			// Already imported child_trie with same root.
 			// Warning this will not work with parallel download.
 		} else {
@@ -162,10 +168,13 @@ where
 			}
 		}
 
+		state_values.top_len += top_key_values.len();
 		state_values.top.extend(top_key_values);
 
 		for key_value in child_key_values {
-			self.state.entry(key_value.1).or_default().child_roots.push(key_value.0);
+			let state_values = self.state.entry(key_value.1).or_default();
+			state_values.child_roots_len += 1;
+			state_values.child_roots.push(key_value.0);
 		}
 	}
 
@@ -276,7 +285,7 @@ where
 					state: std::mem::take(&mut self.state)
 						.into_iter()
 						.map(|(state_root, state_values)| {
-							let StateValues { top, child_roots } = state_values;
+							let StateValues { top, child_roots, .. } = state_values;
 							(state_root, (top, child_roots))
 						})
 						.into(),
