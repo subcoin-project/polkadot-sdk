@@ -89,6 +89,12 @@ pub enum ImportResult<B: BlockT> {
 	BadResponse,
 }
 
+#[derive(Default)]
+struct StateValues {
+	top: Vec<(Vec<u8>, Vec<u8>)>,
+	child_roots: Vec<Vec<u8>>,
+}
+
 /// State sync state machine. Accumulates partial state data until it
 /// is ready to be imported.
 pub struct StateSync<B: BlockT, Client> {
@@ -98,7 +104,7 @@ pub struct StateSync<B: BlockT, Client> {
 	target_body: Option<Vec<B::Extrinsic>>,
 	target_justifications: Option<Justifications>,
 	last_key: SmallVec<[Vec<u8>; 2]>,
-	state: HashMap<Vec<u8>, (Vec<(Vec<u8>, Vec<u8>)>, Vec<Vec<u8>>)>,
+	state: HashMap<Vec<u8>, StateValues>,
 	complete: bool,
 	client: Arc<Client>,
 	imported_bytes: u64,
@@ -145,9 +151,9 @@ where
 				is_top && well_known_keys::is_child_storage_key(key_value.0.as_slice())
 			});
 
-		let entry = self.state.entry(state_root).or_default();
+		let state_values = self.state.entry(state_root).or_default();
 
-		if entry.0.len() > 0 && entry.1.len() > 1 {
+		if state_values.top.len() > 0 && state_values.child_roots.len() > 1 {
 			// Already imported child_trie with same root.
 			// Warning this will not work with parallel download.
 		} else {
@@ -156,10 +162,10 @@ where
 			}
 		}
 
-		entry.0.extend(top_key_values);
+		state_values.top.extend(top_key_values);
 
 		for key_value in child_key_values {
-			self.state.entry(key_value.1).or_default().1.push(key_value.0);
+			self.state.entry(key_value.1).or_default().child_roots.push(key_value.0);
 		}
 	}
 
@@ -267,7 +273,13 @@ where
 				self.target_header.clone(),
 				ImportedState {
 					block: self.target_block,
-					state: std::mem::take(&mut self.state).into(),
+					state: std::mem::take(&mut self.state)
+						.into_iter()
+						.map(|(state_root, state_values)| {
+							let StateValues { top, child_roots } = state_values;
+							(state_root, (top, child_roots))
+						})
+						.into(),
 				},
 				self.target_body.clone(),
 				self.target_justifications.clone(),
