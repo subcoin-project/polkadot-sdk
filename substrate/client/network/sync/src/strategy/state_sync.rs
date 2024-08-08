@@ -270,7 +270,6 @@ where
 				debug!(target: LOG_TARGET, "Error updating key cursor, depth: {}", completed);
 			};
 			self.store_state_verified(values);
-			self.imported_bytes += proof_size;
 			complete
 		} else {
 			self.store_state_unverified(response)
