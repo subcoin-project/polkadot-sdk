@@ -43,6 +43,7 @@ sp-runtime = { workspace = true, default-features = true }
 thiserror = { workspace = true }
 tokio = { features = ["macros", "time"], workspace = true, default-features = true }
 tokio-stream = { workspace = true }
+zstd = { workspace = true }
 
 [dev-dependencies]
 mockall = { workspace = true }

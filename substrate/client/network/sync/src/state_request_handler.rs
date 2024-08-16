@@ -265,7 +265,11 @@ where
 
 			let mut data = Vec::with_capacity(response.encoded_len());
 			response.encode(&mut data)?;
-			Ok(data)
+
+			let compressed_response = zstd::stream::encode_all(data.as_slice(), 0)
+				.map_err(HandleRequestError::Compress)?;
+
+			Ok(compressed_response)
 		} else {
 			Err(())
 		};
@@ -292,4 +296,7 @@ enum HandleRequestError {
 
 	#[error("Failed to send response.")]
 	SendResponse,
+
+	#[error("Failed to compress response: {0}.")]
+	Compress(std::io::Error),
 }
