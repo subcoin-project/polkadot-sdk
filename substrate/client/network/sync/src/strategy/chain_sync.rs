@@ -1520,7 +1520,7 @@ where
 			ChainSyncMode::Full =>
 				BlockAttributes::HEADER | BlockAttributes::JUSTIFICATION | BlockAttributes::BODY,
 			ChainSyncMode::LightState { storage_chain_mode: false, .. } =>
-				BlockAttributes::HEADER | BlockAttributes::JUSTIFICATION | BlockAttributes::BODY,
+				BlockAttributes::HEADER | BlockAttributes::JUSTIFICATION,
 			ChainSyncMode::LightState { storage_chain_mode: true, .. } =>
 				BlockAttributes::HEADER |
 					BlockAttributes::JUSTIFICATION |
@@ -1964,8 +1964,20 @@ where
 	}
 
 	#[must_use]
-	fn on_state_data(&mut self, peer_id: &PeerId, response: &[u8]) -> Result<(), BadPeer> {
-		let response = match StateResponse::decode(response) {
+	fn on_state_data(
+		&mut self,
+		peer_id: &PeerId,
+		compressed_response: &[u8],
+	) -> Result<(), BadPeer> {
+		let response = zstd::stream::decode_all(compressed_response).map_err(|error| {
+			debug!(
+				target: LOG_TARGET,
+				"Failed to decompress state response from peer {peer_id:?}: {error:?}",
+			);
+			BadPeer(*peer_id, rep::BAD_RESPONSE)
+		})?;
+
+		let response = match StateResponse::decode(response.as_slice()) {
 			Ok(response) => response,
 			Err(error) => {
 				debug!(
