@@ -190,13 +190,21 @@ impl<B: BlockT> StateStrategy<B> {
 	fn on_state_response_inner(
 		&mut self,
 		peer_id: &PeerId,
-		response: &[u8],
+		compressed_response: &[u8],
 	) -> Result<(), BadPeer> {
 		if let Some(peer) = self.peers.get_mut(&peer_id) {
 			peer.state = PeerState::Available;
 		}
 
-		let response = match StateResponse::decode(response) {
+		let response = zstd::stream::decode_all(compressed_response).map_err(|error| {
+			debug!(
+				target: LOG_TARGET,
+				"Failed to decompress state response from peer {peer_id:?}: {error:?}",
+			);
+			BadPeer(*peer_id, rep::BAD_RESPONSE)
+		})?;
+
+		let response = match StateResponse::decode(response.as_slice()) {
 			Ok(response) => response,
 			Err(error) => {
 				debug!(
