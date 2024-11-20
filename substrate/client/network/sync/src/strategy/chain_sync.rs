@@ -1110,8 +1110,9 @@ where
 		}
 	}
 
-	fn create_block_request_action(
-		&mut self,
+	/// Creates a block request action for the given peer to initiate a block download.
+	pub fn create_block_request_action(
+		&self,
 		peer_id: PeerId,
 		request: BlockRequest<B>,
 	) -> SyncingAction<B> {
