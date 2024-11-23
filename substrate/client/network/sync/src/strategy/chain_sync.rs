@@ -1797,6 +1797,17 @@ where
 
 	/// Get block requests scheduled by sync to be sent out.
 	fn block_requests(&mut self) -> Vec<(PeerId, BlockRequest<B>)> {
+		// XXX: Dirty hack to preventing the node from syncing from others.
+		// Can be removed if Substrate supports keeping the state of specific blocks for the pruning
+		// flag.
+		//
+		// This will make the node remain at the local best block, useful to establish
+		// Subcoin snapshot node to offer state sync at a specific block for other Subcoin
+		// nodes without changing the pruning strategy.
+		if std::env::var("SUBCOIN_SNAPSHOT_NODE").is_ok() {
+			return Vec::new();
+		}
+
 		if self.allowed_requests.is_empty() || self.state_sync.is_some() {
 			return Vec::new();
 		}
