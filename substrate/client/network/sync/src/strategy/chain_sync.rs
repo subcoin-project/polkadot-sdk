@@ -1121,7 +1121,7 @@ where
 		}
 	}
 
-	fn create_block_request_action(
+	pub fn create_block_request_action(
 		&mut self,
 		peer_id: PeerId,
 		request: BlockRequest<B>,
