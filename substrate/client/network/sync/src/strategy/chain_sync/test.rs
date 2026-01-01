@@ -1273,6 +1273,7 @@ fn sync_verification_failed_with_gap_filled() {
 				best_queued_number: 64 as u64,
 				target: 84 as u64,
 				blocks: BlockCollection::new(),
+				started: true,
 			});
 		} else if loop_index == 1 {
 			if sync.gap_sync.is_none() {
@@ -1317,6 +1318,7 @@ fn sync_gap_filled_regardless_of_blocks_origin() {
 			best_queued_number: *blocks[0].header().number(),
 			target: *blocks[0].header().number(),
 			blocks: BlockCollection::new(),
+			started: true,
 		});
 
 		// Announce the block as unknown.
@@ -1339,6 +1341,7 @@ fn sync_gap_filled_regardless_of_blocks_origin() {
 			best_queued_number: *blocks[0].header().number(),
 			target: *blocks[0].header().number(),
 			blocks: BlockCollection::new(),
+			started: true,
 		});
 
 		// Announce the block as known.

@@ -204,6 +204,10 @@ struct GapSync<B: BlockT> {
 	blocks: BlockCollection<B>,
 	best_queued_number: NumberFor<B>,
 	target: NumberFor<B>,
+	/// Whether we've actually started downloading gap blocks.
+	/// This prevents completing the gap sync immediately after restart
+	/// when blocks from state sync are imported.
+	started: bool,
 }
 
 /// Sync operation mode.
@@ -993,7 +997,12 @@ where
 
 	/// Complete the gap sync if the target number is reached and there is a gap.
 	fn complete_gap_if_target(&mut self, number: NumberFor<B>) {
-		let gap_sync_complete = self.gap_sync.as_ref().map_or(false, |s| s.target == number);
+		let gap_sync_complete = self.gap_sync.as_ref().map_or(false, |s| {
+			// Only complete if:
+			// 1. We've actually started downloading gap blocks (not just importing state sync blocks)
+			// 2. We've synced up to the target
+			s.started && s.target == number && s.best_queued_number >= s.target
+		});
 		if gap_sync_complete {
 			info!(
 				target: LOG_TARGET,
@@ -1185,6 +1194,8 @@ where
 								validate_blocks::<B>(&blocks, peer_id, Some(request))?
 							{
 								gap_sync.blocks.insert(start_block, blocks, *peer_id);
+								// Mark gap sync as actually started once we receive real gap blocks
+								gap_sync.started = true;
 							}
 							gap = true;
 							let blocks: Vec<_> = gap_sync
@@ -1606,7 +1617,9 @@ where
 			trace!(target: LOG_TARGET, "Completed fork sync {hash:?}");
 		}
 		if let Some(gap_sync) = &mut self.gap_sync {
-			if number > gap_sync.best_queued_number && number <= gap_sync.target {
+			// Only update gap sync progress for blocks that are actually from gap sync downloads,
+			// not for blocks imported via state sync.
+			if gap_sync.started && number > gap_sync.best_queued_number && number <= gap_sync.target {
 				gap_sync.best_queued_number = number;
 			}
 		}
@@ -1727,6 +1740,7 @@ where
 				best_queued_number: start - One::one(),
 				target: end,
 				blocks: BlockCollection::new(),
+				started: false,
 			});
 		}
 		trace!(
