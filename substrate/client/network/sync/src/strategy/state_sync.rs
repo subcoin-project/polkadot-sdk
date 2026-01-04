@@ -150,7 +150,7 @@ where
 	B: BlockT,
 	Client: ProofProvider<B> + Send + Sync + 'static,
 {
-	///  Create a new instance.
+	/// Create a new instance.
 	pub fn new(
 		client: Arc<Client>,
 		target_header: B::Header,
@@ -162,6 +162,33 @@ where
 			client,
 			metadata: StateSyncMetadata {
 				last_key: SmallVec::default(),
+				target_header,
+				target_body,
+				target_justifications,
+				complete: false,
+				imported_bytes: 0,
+				skip_proof,
+			},
+			state: HashMap::default(),
+		}
+	}
+
+	/// Create a new instance with a starting position for resumable sync.
+	///
+	/// This allows resuming state sync from a previous position by providing
+	/// the `last_key` that was saved from a prior sync session.
+	pub fn new_with_last_key(
+		client: Arc<Client>,
+		target_header: B::Header,
+		target_body: Option<Vec<B::Extrinsic>>,
+		target_justifications: Option<Justifications>,
+		skip_proof: bool,
+		last_key: SmallVec<[Vec<u8>; 2]>,
+	) -> Self {
+		Self {
+			client,
+			metadata: StateSyncMetadata {
+				last_key,
 				target_header,
 				target_body,
 				target_justifications,
